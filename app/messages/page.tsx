@@ -1,9 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { Tab } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
+import { type Event, Filter } from "nostr-tools";
 
 import { classNames } from "../lib/utils";
+import { useRelayStore } from "../stores/relayStore";
+import { useUserProfileStore } from "../stores/userProfileStore";
 import Badge from "./components/Badge";
 import Contact, { IUser } from "./components/Contact";
 
@@ -57,6 +62,33 @@ const TABS = [
 ];
 
 export default function MessagesPage() {
+  const { subscribe, relayUrl } = useRelayStore();
+  const { userPublicKey } = useUserProfileStore();
+
+  const getMessages = () => {
+    const messagesFilter: Filter = {
+      kinds: [4],
+      "#p": [userPublicKey],
+      limit: 10,
+      until: undefined,
+    };
+
+    // const events: Event[] = [];
+
+    const onEvent = async (event: Event) => {
+      const message = await window.nostr.nip04.decrypt(event.pubkey, event.content)
+      console.log(event, { message })
+    };
+
+    const onEOSE = () => {
+      console.log("EOSE");
+    };
+
+    subscribe([relayUrl], messagesFilter, onEvent, onEOSE);
+  };
+
+  useEffect(getMessages, [relayUrl, userPublicKey, subscribe]);
+
   return (
     <Tab.Group>
       <Tab.List className="flex items-center border-b border-b-gray-400 dark:border-b-gray-600">
@@ -66,7 +98,7 @@ export default function MessagesPage() {
             className={({ selected }) =>
               classNames(
                 `flex items-center gap-2 rounded-t-md border-x border-t p-4`,
-                selected ? "border-gray-400 dark:border-gray-600 focus:outline-none" : "border-transparent"
+                selected ? "border-gray-400 focus:outline-none dark:border-gray-600" : "border-transparent"
               )
             }
           >
